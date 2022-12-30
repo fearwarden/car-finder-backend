@@ -1,12 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { User } from './user.entity';
 import { CreateUserDto } from './dtos/createUser.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common/exceptions';
+import { InternalServerErrorException } from '@nestjs/common/exceptions';
 
 @Injectable()
 export class UserService {
@@ -16,12 +13,14 @@ export class UserService {
   ) {}
 
   async register(user: CreateUserDto): Promise<User> {
+    let findUser: object[];
     try {
-      if (await this.userRepository.findBy({ email: user.email })) {
-        throw new ConflictException('User already exist');
-      }
+      findUser = await this.userRepository.findBy({ email: user.email });
     } catch (error) {
       throw new InternalServerErrorException();
+    }
+    if (findUser.length > 0) {
+      throw new ConflictException('User already exist');
     }
     const newUser = this.userRepository.create({
       ...user,
@@ -29,8 +28,12 @@ export class UserService {
     });
     try {
       return this.userRepository.save(newUser);
-    } catch {
+    } catch (error) {
       throw new InternalServerErrorException();
     }
+  }
+
+  deleteUser(id: string) {
+    return this.userRepository.delete({ id });
   }
 }
