@@ -3,7 +3,10 @@ import { User } from './user.entity';
 import { CreateUserDto } from './dtos/createUser.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ConflictException } from '@nestjs/common/exceptions';
+import {
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common/exceptions';
 
 @Injectable()
 export class UserService {
@@ -13,13 +16,21 @@ export class UserService {
   ) {}
 
   async register(user: CreateUserDto): Promise<User> {
-    if (await this.userRepository.findBy({ email: user.email })) {
-      throw new ConflictException('User already exist');
+    try {
+      if (await this.userRepository.findBy({ email: user.email })) {
+        throw new ConflictException('User already exist');
+      }
+    } catch (error) {
+      throw new InternalServerErrorException();
     }
     const newUser = this.userRepository.create({
       ...user,
       createdAt: new Date(),
     });
-    return this.userRepository.save(newUser);
+    try {
+      return this.userRepository.save(newUser);
+    } catch {
+      throw new InternalServerErrorException();
+    }
   }
 }
